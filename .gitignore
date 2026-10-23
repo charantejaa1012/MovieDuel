@@ -1,13 +1,12 @@
 # Dependencies
 node_modules/
-package-lock.json
 
-# Environment
+# Environment – never commit real secrets
 .env
 .env.local
 .env.production
 
-# Build
+# Build output – Vercel / Render build these in CI
 dist/
 build/
 

@@ -19,11 +19,11 @@ const rateLimitHandler = (message) => (req, res) => {
 };
 
 /**
- * General API Limiter: 100 requests per 15 minutes
+ * General API Limiter: 600 requests per 15 minutes (scaled for high concurrency)
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: config.isTest ? 1000 : 100,
+  max: config.isTest ? 1000 : 600,
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler('Too many requests from this IP, please try again in 15 minutes.'),

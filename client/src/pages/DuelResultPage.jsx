@@ -1,66 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Swords, RefreshCw, ChevronLeft, AlertCircle } from 'lucide-react';
+import { Swords, RefreshCw, ChevronLeft, ArrowLeftRight } from 'lucide-react';
 import { DuelComparison } from '../components/duel/DuelComparison';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
+import { useToast } from '../contexts/ToastContext';
 import * as api from '../services/api';
 
 export function DuelResultPage() {
   const { movie1: movie1Id, movie2: movie2Id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { success, error: toastError } = useToast();
 
   const [duelData, setDuelData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
   const [error, setError] = useState(null);
 
-  // Weights passed through state or default balanced
-  const weights = location.state?.weights || {
-    critic: 25,
-    audience: 25,
-    story: 25,
-    visuals: 25,
-  };
-
-  const executeDuel = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await api.compareDuel(movie1Id, movie2Id, weights);
-      if (res.data) {
-        setDuelData(res.data);
-      } else {
-        throw new Error('Comparison calculation failed');
+  // Default initial weights
+  const [weights, setWeights] = useState(() => {
+    return (
+      location.state?.weights || {
+        genreMatch: 25,
+        rating: 25,
+        runtime: 25,
+        popularity: 25,
       }
-    } catch (err) {
-      console.error('Failed to calculate duel result:', err);
-      setError('Could not calculate comparison scores. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
+  });
+
+  const executeDuel = useCallback(
+    async (weightsToUse = weights, isRecalc = false) => {
+      if (isRecalc) {
+        setRecalculating(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      try {
+        const res = await api.compareDuel(movie1Id, movie2Id, weightsToUse);
+        if (res.data) {
+          setDuelData(res.data);
+          setWeights(weightsToUse);
+          if (isRecalc) {
+            success('Duel scores recalculated with new weights!');
+          }
+        } else {
+          throw new Error('Comparison calculation failed');
+        }
+      } catch (err) {
+        console.error('Failed to calculate duel result:', err);
+        setError('Could not calculate comparison scores. Please try again.');
+        if (isRecalc) {
+          toastError('Failed to recalculate with new weights');
+        }
+      } finally {
+        setLoading(false);
+        setRecalculating(false);
+      }
+    },
+    [movie1Id, movie2Id, weights, success, toastError]
+  );
 
   useEffect(() => {
     if (movie1Id && movie2Id) {
-      executeDuel();
+      executeDuel(weights, false);
     }
   }, [movie1Id, movie2Id]);
 
+  const handleRecalculate = (newWeights) => {
+    executeDuel(newWeights, true);
+  };
+
+  const handleSwapContenders = () => {
+    navigate(`/duel/${movie2Id}/${movie1Id}`, {
+      state: {
+        weights,
+      },
+    });
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full min-h-[85vh] flex flex-col space-y-8">
-      {/* Back button */}
-      <div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-[85vh] flex flex-col space-y-8">
+      {/* Back button & quick navigation */}
+      <div className="flex items-center justify-between">
         <Link
           to="/duel"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A1A1AA] hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A1A1AA] hover:text-white transition-colors px-3 py-1.5 rounded-xl bg-[#18181B] border border-[#27272A] hover:border-purple-500/40"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Back to Arena Setup</span>
         </Link>
+
+        {duelData && (
+          <button
+            type="button"
+            onClick={handleSwapContenders}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-300 hover:text-white transition-colors px-3 py-1.5 rounded-xl bg-purple-950/50 border border-purple-500/30 hover:bg-purple-900/60"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+            <span>Swap Contenders</span>
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -79,7 +124,7 @@ export function DuelResultPage() {
               Simulating Head-to-Head Clash...
             </h2>
             <p className="text-xs text-[#A1A1AA]">
-              Calculating metrics across critic consensuses, box office reception, narrative pacing, and technical brilliance.
+              Calculating metrics across critic consensuses, box office reception, narrative pacing, and taste profile calibration.
             </p>
           </div>
 
@@ -91,7 +136,7 @@ export function DuelResultPage() {
         </div>
       ) : error ? (
         <div className="max-w-2xl mx-auto space-y-4">
-          <ErrorBanner message={error} onRetry={executeDuel} />
+          <ErrorBanner message={error} onRetry={() => executeDuel(weights, false)} />
           <div className="text-center">
             <Button
               variant="outline"
@@ -106,6 +151,9 @@ export function DuelResultPage() {
         <DuelComparison
           duelData={duelData}
           onNewDuel={() => navigate('/duel')}
+          onRecalculate={handleRecalculate}
+          recalculating={recalculating}
+          onSwap={handleSwapContenders}
         />
       ) : null}
     </div>

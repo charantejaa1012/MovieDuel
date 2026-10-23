@@ -17,7 +17,9 @@ import logger from '../utils/logger.js';
  */
 export async function compare(req, res, next) {
   try {
-    const { movieAId, movieBId, weights, preferences: reqPreferences } = req.body;
+    const movieAId = req.body.movieAId || req.body.movie1Id;
+    const movieBId = req.body.movieBId || req.body.movie2Id;
+    const { weights, preferences: reqPreferences } = req.body;
 
     if (movieAId === movieBId) {
       return error(res, 'Cannot duel a movie against itself. Movie A and Movie B must be different.', 400);
@@ -111,7 +113,112 @@ export async function getHistory(req, res, next) {
   }
 }
 
+/**
+ * Retrieves dynamic featured duel matchups based on currently trending films.
+ * @route GET /api/duels/featured
+ */
+export async function getFeaturedDuels(req, res, next) {
+  try {
+    const trending = await tmdbService.getTrending('week');
+    const movies = (trending.results || []).filter((m) => m && m.poster_path);
+
+    if (movies.length >= 6) {
+      // Create 3 dynamic high-profile pairs
+      const matchups = [
+        {
+          id: `featured-${movies[0].id}-${movies[1].id}`,
+          title: `${movies[0].title} vs ${movies[1].title}`,
+          badge: 'Box Office Clash',
+          movie1: {
+            id: movies[0].id,
+            title: movies[0].title,
+            poster_path: movies[0].poster_path,
+            rating: Number((movies[0].vote_average || 7.5).toFixed(1)),
+            year: movies[0].release_date ? movies[0].release_date.substring(0, 4) : '2025'
+          },
+          movie2: {
+            id: movies[1].id,
+            title: movies[1].title,
+            poster_path: movies[1].poster_path,
+            rating: Number((movies[1].vote_average || 7.4).toFixed(1)),
+            year: movies[1].release_date ? movies[1].release_date.substring(0, 4) : '2025'
+          }
+        },
+        {
+          id: `featured-${movies[2].id}-${movies[3].id}`,
+          title: `${movies[2].title} vs ${movies[3].title}`,
+          badge: 'Trending Rivals',
+          movie1: {
+            id: movies[2].id,
+            title: movies[2].title,
+            poster_path: movies[2].poster_path,
+            rating: Number((movies[2].vote_average || 7.2).toFixed(1)),
+            year: movies[2].release_date ? movies[2].release_date.substring(0, 4) : '2025'
+          },
+          movie2: {
+            id: movies[3].id,
+            title: movies[3].title,
+            poster_path: movies[3].poster_path,
+            rating: Number((movies[3].vote_average || 7.1).toFixed(1)),
+            year: movies[3].release_date ? movies[3].release_date.substring(0, 4) : '2025'
+          }
+        },
+        {
+          id: `featured-${movies[4].id}-${movies[5].id}`,
+          title: `${movies[4].title} vs ${movies[5].title}`,
+          badge: 'Critic Favorites',
+          movie1: {
+            id: movies[4].id,
+            title: movies[4].title,
+            poster_path: movies[4].poster_path,
+            rating: Number((movies[4].vote_average || 7.8).toFixed(1)),
+            year: movies[4].release_date ? movies[4].release_date.substring(0, 4) : '2025'
+          },
+          movie2: {
+            id: movies[5].id,
+            title: movies[5].title,
+            poster_path: movies[5].poster_path,
+            rating: Number((movies[5].vote_average || 7.6).toFixed(1)),
+            year: movies[5].release_date ? movies[5].release_date.substring(0, 4) : '2025'
+          }
+        }
+      ];
+
+      return success(res, { matchups }, 'Dynamic featured matchups retrieved');
+    }
+
+    // Fallback static if not enough movies
+    const fallbackMatchups = [
+      {
+        id: 'dune-interstellar',
+        title: 'Dune: Part Two vs Interstellar',
+        badge: 'Sci-Fi Titans',
+        movie1: {
+          id: 693134,
+          title: 'Dune: Part Two',
+          poster_path: '/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
+          rating: 8.3,
+          year: '2024'
+        },
+        movie2: {
+          id: 157336,
+          title: 'Interstellar',
+          poster_path: '/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
+          rating: 8.4,
+          year: '2014'
+        }
+      }
+    ];
+
+    return success(res, { matchups: fallbackMatchups }, 'Featured matchups retrieved');
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export default {
   compare,
-  getHistory
+  getHistory,
+  getFeaturedDuels
 };
+

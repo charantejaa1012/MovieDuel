@@ -1,77 +1,136 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import * as api from '../services/api';
 
 const WatchlistContext = createContext(null);
 
+function normalizeItem(item) {
+  if (!item) return null;
+  const id = Number(item.movieId || item.id);
+  const title = item.movieTitle || item.title || `Movie #${id}`;
+  const poster = item.moviePoster || item.poster_path || null;
+  const rating = item.movieRating ?? item.vote_average ?? null;
+  const year = item.movieYear || (item.release_date ? String(item.release_date).split('-')[0] : '');
+
+  return {
+    ...item,
+    id,
+    movieId: id,
+    title,
+    movieTitle: title,
+    poster_path: poster,
+    moviePoster: poster,
+    vote_average: rating,
+    movieRating: rating,
+    release_date: year ? `${year}-01-01` : (item.release_date || ''),
+    movieYear: year,
+  };
+}
+
 export function WatchlistProvider({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { success, error: toastError } = useToast();
-  
-  // Stored as Map (id -> movie object) for O(1) lookups
+
+  // Map of movieId (string) -> normalized movie object
   const [watchlistMap, setWatchlistMap] = useState(new Map());
   const [loading, setLoading] = useState(true);
+  const prevUserIdRef = useRef(null);
 
-  // Load watchlist on mount or auth change
+  // Load watchlist whenever auth state or active user ID changes
   const loadWatchlist = useCallback(async () => {
     setLoading(true);
+
+    // Clean up any legacy shared keys in localStorage
+    if (typeof localStorage !== 'undefined') {
+      ['movie_duel_watchlist', 'movie_duel_guest_watchlist'].forEach((k) => localStorage.removeItem(k));
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('movie_duel_watchlist'))
+        .forEach((k) => localStorage.removeItem(k));
+    }
+
     try {
+      // If not authenticated, user does not have a persistent watchlist
+      if (!isAuthenticated || !user?.id) {
+        setWatchlistMap(new Map());
+        return;
+      }
+
+      // Fetch user's dedicated watchlist strictly from MongoDB Atlas
       const res = await api.getWatchlist();
-      const list = res.watchlist || res.data || [];
+      const rawList =
+        res?.data?.items ||
+        res?.items ||
+        res?.data?.watchlist ||
+        (Array.isArray(res?.data) ? res?.data : []);
+
       const newMap = new Map();
-      if (Array.isArray(list)) {
-        list.forEach((item) => {
-          const movieId = item.movieId || item.id;
-          newMap.set(String(movieId), item);
+      if (Array.isArray(rawList)) {
+        rawList.forEach((raw) => {
+          const norm = normalizeItem(raw);
+          if (norm && norm.id) {
+            newMap.set(String(norm.id), norm);
+          }
         });
       }
       setWatchlistMap(newMap);
     } catch (err) {
-      console.error('Failed to load watchlist:', err);
+      console.error('Failed to load user-specific watchlist:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
+    // If user changed or logged out, reset map first to avoid showing stale user data
+    const currentId = user?.id || null;
+    if (prevUserIdRef.current !== currentId) {
+      setWatchlistMap(new Map());
+      prevUserIdRef.current = currentId;
+    }
     loadWatchlist();
-  }, [loadWatchlist, isAuthenticated]);
+  }, [loadWatchlist, user?.id, isAuthenticated]);
 
   const isInWatchlist = useCallback(
     (movieId) => {
-      if (!movieId) return false;
+      if (!movieId || !isAuthenticated) return false;
       return watchlistMap.has(String(movieId));
     },
-    [watchlistMap]
+    [watchlistMap, isAuthenticated]
   );
 
   const addToWatchlist = useCallback(
     async (movie) => {
-      if (!movie || !movie.id) return;
-      const movieIdStr = String(movie.id);
+      if (!isAuthenticated) {
+        toastError('Please sign in to save movies to your watchlist.');
+        return;
+      }
+
+      if (!movie || (!movie.id && !movie.movieId)) return;
+      const normalized = normalizeItem(movie);
+      const movieIdStr = String(normalized.id);
 
       // Optimistic update
       setWatchlistMap((prev) => {
         const next = new Map(prev);
-        next.set(movieIdStr, movie);
+        next.set(movieIdStr, normalized);
         return next;
       });
 
       try {
-        await api.addToWatchlist(movie);
-        success(`"${movie.title || 'Movie'}" added to your watchlist`);
+        await api.addToWatchlist(normalized);
+        success(`"${normalized.title}" saved to your personal watchlist`);
       } catch (err) {
-        // Revert optimistic update on failure
+        // Revert optimistic update
         setWatchlistMap((prev) => {
           const next = new Map(prev);
           next.delete(movieIdStr);
           return next;
         });
-        toastError('Failed to add movie to watchlist');
+        toastError(err?.message || 'Could not save to watchlist');
       }
     },
-    [success, toastError]
+    [isAuthenticated, success, toastError]
   );
 
   const removeFromWatchlist = useCallback(
@@ -89,7 +148,7 @@ export function WatchlistProvider({ children }) {
 
       try {
         await api.removeFromWatchlist(movieId);
-        success(`Removed from watchlist`);
+        success('Removed from your watchlist');
       } catch (err) {
         // Revert optimistic update
         if (existing) {
@@ -99,7 +158,7 @@ export function WatchlistProvider({ children }) {
             return next;
           });
         }
-        toastError('Failed to remove movie from watchlist');
+        toastError('Could not remove from watchlist');
       }
     },
     [watchlistMap, success, toastError]
@@ -107,9 +166,10 @@ export function WatchlistProvider({ children }) {
 
   const toggleWatchlist = useCallback(
     async (movie) => {
-      if (!movie || !movie.id) return;
-      if (isInWatchlist(movie.id)) {
-        await removeFromWatchlist(movie.id);
+      if (!movie) return;
+      const id = movie.id || movie.movieId;
+      if (isInWatchlist(id)) {
+        await removeFromWatchlist(id);
       } else {
         await addToWatchlist(movie);
       }
@@ -117,7 +177,6 @@ export function WatchlistProvider({ children }) {
     [isInWatchlist, addToWatchlist, removeFromWatchlist]
   );
 
-  // Array representation for rendering lists
   const watchlist = Array.from(watchlistMap.values());
 
   const value = {

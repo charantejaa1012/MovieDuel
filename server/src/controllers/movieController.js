@@ -26,7 +26,7 @@ export async function getTrending(req, res, next) {
  */
 export async function searchMovies(req, res, next) {
   try {
-    const query = req.query.query;
+    const query = req.query.query || req.query.q;
     const page = parseInt(req.query.page || '1', 10);
 
     if (!query || String(query).trim().length === 0) {
@@ -62,6 +62,26 @@ export async function getMovieDetails(req, res, next) {
     if (err.response && err.response.status === 404) {
       return error(res, 'Movie not found on TMDB', 404);
     }
+    return next(err);
+  }
+}
+
+/**
+ * Fetches official videos and trailers for a movie.
+ * @route GET /api/movies/:id/videos
+ */
+export async function getMovieVideos(req, res, next) {
+  try {
+    const movieId = req.params.id;
+    const idNum = parseInt(movieId, 10);
+    if (isNaN(idNum) || idNum <= 0) {
+      return error(res, 'Invalid movie ID parameter', 400);
+    }
+
+    const data = await tmdbService.getMovieDetails(idNum);
+    const videos = data?.videos?.results || [];
+    return success(res, { results: videos }, 'Movie videos retrieved successfully');
+  } catch (err) {
     return next(err);
   }
 }

@@ -41,6 +41,9 @@ export async function connectDB(maxRetries = 3, retryDelay = 3000) {
 
       const conn = await mongoose.connect(config.mongoUri, {
         serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: 50,
+        minPoolSize: 10,
         autoIndex: config.env !== 'production'
       });
 

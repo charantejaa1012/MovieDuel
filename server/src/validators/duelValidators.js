@@ -7,20 +7,20 @@ import { z } from 'zod';
 
 export const compareSchema = z
   .object({
-    movieAId: z.coerce
-      .number({ required_error: 'movieAId is required' })
-      .int('movieAId must be an integer')
-      .positive('movieAId must be a positive integer'),
-    movieBId: z.coerce
-      .number({ required_error: 'movieBId is required' })
-      .int('movieBId must be an integer')
-      .positive('movieBId must be a positive integer'),
+    movieAId: z.coerce.number().int().positive().optional(),
+    movie1Id: z.coerce.number().int().positive().optional(),
+    movieBId: z.coerce.number().int().positive().optional(),
+    movie2Id: z.coerce.number().int().positive().optional(),
     weights: z
       .object({
         genreMatch: z.coerce.number().min(0, 'genreMatch weight cannot be negative').optional(),
         rating: z.coerce.number().min(0, 'rating weight cannot be negative').optional(),
         runtime: z.coerce.number().min(0, 'runtime weight cannot be negative').optional(),
-        popularity: z.coerce.number().min(0, 'popularity weight cannot be negative').optional()
+        popularity: z.coerce.number().min(0, 'popularity weight cannot be negative').optional(),
+        critic: z.coerce.number().min(0).optional(),
+        audience: z.coerce.number().min(0).optional(),
+        story: z.coerce.number().min(0).optional(),
+        visuals: z.coerce.number().min(0).optional()
       })
       .optional(),
     preferences: z
@@ -36,8 +36,12 @@ export const compareSchema = z
       })
       .optional()
   })
-  .refine((data) => data.movieAId !== data.movieBId, {
-    message: 'movieAId and movieBId must be different movies',
+  .refine((data) => {
+    const a = data.movieAId || data.movie1Id;
+    const b = data.movieBId || data.movie2Id;
+    return a && b && a !== b;
+  }, {
+    message: 'Both movies must be selected and must be different',
     path: ['movieBId']
   });
 

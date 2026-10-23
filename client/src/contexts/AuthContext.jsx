@@ -96,7 +96,8 @@ export function AuthProvider({ children }) {
       }
       return { success: true, user: authUser };
     } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Registration failed';
+      const detailed = err.response?.data?.errors?.map((e) => e.message).join('. ');
+      const message = detailed || err.response?.data?.message || err.message || 'Registration failed';
       setError(message);
       throw new Error(message);
     }
@@ -110,6 +111,8 @@ export function AuthProvider({ children }) {
     } finally {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('movie_duel_watchlist');
+      localStorage.removeItem('movie_duel_guest_watchlist');
       setToken(null);
       setUser(null);
       setError(null);

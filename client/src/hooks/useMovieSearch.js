@@ -54,7 +54,15 @@ export function useMovieSearch(initialQuery = '', delay = 300) {
       try {
         const res = await searchMovies(trimmed);
         if (!abortController.signal.aborted) {
-          const list = res.results || res.data || [];
+          const list = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.results)
+            ? res.results
+            : Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.data?.results)
+            ? res.data.results
+            : [];
           setResults(list);
           setHasSearched(true);
         }

@@ -21,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { MovieDetailsSkeleton } from '../components/ui/Skeleton';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
+import ReviewSection from '../components/review/ReviewSection';
 import { useWatchlist } from '../contexts/WatchlistContext';
 import * as api from '../services/api';
 import {
@@ -52,7 +53,7 @@ export function MoviePage() {
       setError(null);
       try {
         const res = await api.getMovieDetails(id);
-        const data = res.movie || res.data;
+        const data = res?.movie || res?.data?.data || res?.data || res;
         if (isMounted) {
           setMovie(data);
         }
@@ -60,8 +61,9 @@ export function MoviePage() {
         // Fetch similar/popular movies for recommendations carousel
         const popRes = await api.getPopular();
         if (isMounted) {
-          const popList = popRes.results || popRes.data || [];
-          setSimilarMovies(popList.filter((m) => String(m.id) !== String(id)));
+          const popPayload = popRes?.data ?? popRes;
+          const popList = popPayload?.results || (Array.isArray(popPayload) ? popPayload : (Array.isArray(popRes) ? popRes : []));
+          setSimilarMovies(Array.isArray(popList) ? popList.filter((m) => String(m.id) !== String(id)) : []);
         }
       } catch (err) {
         if (isMounted) {
@@ -110,7 +112,13 @@ export function MoviePage() {
   const backdropUrl = getBackdropUrl(movie.backdrop_path, 'original');
   const posterUrl = getImageUrl(movie.poster_path, 'w500');
   const director = movie.credits?.crew?.find((c) => c.job === 'Director')?.name || 'Unknown';
-  const trailerKey = movie.videos?.results?.[0]?.key;
+  const trailerItem =
+    movie.videos?.results?.find(
+      (v) => (v.type === 'Trailer' || v.type === 'Teaser') && v.site === 'YouTube'
+    ) ||
+    movie.videos?.results?.find((v) => v.site === 'YouTube') ||
+    movie.videos?.results?.[0];
+  const trailerKey = trailerItem?.key;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -274,6 +282,13 @@ export function MoviePage() {
             </div>
           </section>
         )}
+
+        {/* Audience & Community Reviews */}
+        <ReviewSection
+          movieId={movie.id}
+          movieTitle={movie.title}
+          moviePoster={movie.poster_path}
+        />
 
         {/* Similar / More Like This Carousel */}
         <section className="space-y-4 pt-6 pb-12 border-t border-[#27272A]">

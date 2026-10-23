@@ -29,7 +29,8 @@ export function errorHandler(err, req, res, next) {
   // 1. Zod Validation Error
   if (err instanceof ZodError) {
     statusCode = 400;
-    message = 'Validation Error';
+    const detailList = err.errors.map((e) => e.message);
+    message = detailList.join('. ') || 'Validation Error';
     errors = err.errors.map((e) => ({
       path: e.path.join('.'),
       message: e.message,

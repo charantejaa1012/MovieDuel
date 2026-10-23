@@ -22,13 +22,21 @@ export function TrailerModal({ isOpen, onClose, videoKey, title = 'Official Trai
             allowFullScreen
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8 text-[#A1A1AA]">
-            <p className="text-base font-semibold text-white mb-1">
-              Trailer not available
+          <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3 text-[#A1A1AA]">
+            <p className="text-base font-bold text-white">
+              Trailer not directly embeddable
             </p>
-            <p className="text-xs">
-              A trailer preview is currently unavailable for this title.
+            <p className="text-xs max-w-sm">
+              The official distributor has restricted direct in-app embedding for this preview.
             </p>
+            <a
+              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors shadow-lg shadow-purple-600/30"
+            >
+              Search & Watch on YouTube
+            </a>
           </div>
         )}
       </div>

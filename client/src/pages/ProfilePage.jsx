@@ -47,8 +47,15 @@ export function ProfilePage() {
           api.getDuelHistory(),
         ]);
 
-        if (genresRes.genres || genresRes.data) {
-          setGenres(genresRes.genres || genresRes.data);
+        const fetchedGenres =
+          genresRes?.genres ||
+          (Array.isArray(genresRes?.data) ? genresRes.data : genresRes?.data?.genres) ||
+          (Array.isArray(genresRes) ? genresRes : null);
+
+        if (Array.isArray(fetchedGenres) && fetchedGenres.length > 0) {
+          setGenres(fetchedGenres);
+        } else {
+          setGenres(api.FALLBACK_GENRES);
         }
 
         const prefs = prefsRes.preferences || prefsRes.data;
@@ -162,7 +169,7 @@ export function ProfilePage() {
               Favorite Genres ({selectedGenres.length} selected)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-              {genres.map((g) => {
+              {(Array.isArray(genres) ? genres : api.FALLBACK_GENRES).map((g) => {
                 const isSelected = selectedGenres.includes(g.id);
                 return (
                   <button

@@ -22,6 +22,7 @@ import duelRoutes from './routes/duelRoutes.js';
 import watchlistRoutes from './routes/watchlistRoutes.js';
 import preferencesRoutes from './routes/preferencesRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
 
 const app = express();
 
@@ -87,9 +88,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/duels', duelRoutes);
+app.use('/api/duel', duelRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // 9. 404 Route Handler for undefined endpoints
 app.use('*', (req, res) => {

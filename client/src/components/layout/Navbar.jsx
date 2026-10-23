@@ -164,6 +164,14 @@ export function Navbar() {
                     if (!isSearchOpen) setIsSearchOpen(true);
                   }}
                   onFocus={() => setIsSearchOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && query.trim()) {
+                      e.preventDefault();
+                      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+                      setIsSearchOpen(false);
+                      clear();
+                    }
+                  }}
                   placeholder="Search movies..."
                   className={`bg-transparent text-sm text-[#F4F4F5] placeholder-[#71717A] outline-none pr-3 w-full ${
                     isSearchOpen ? 'block' : 'hidden sm:block'

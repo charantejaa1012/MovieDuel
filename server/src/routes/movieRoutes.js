@@ -8,6 +8,7 @@ import {
   getTrending,
   searchMovies,
   getMovieDetails,
+  getMovieVideos,
   getUpcoming,
   getGenres,
   getPopular
@@ -20,6 +21,7 @@ router.get('/search', searchMovies);
 router.get('/upcoming', getUpcoming);
 router.get('/genres', getGenres);
 router.get('/popular', getPopular);
+router.get('/:id/videos', getMovieVideos);
 router.get('/:id', getMovieDetails);
 
 export default router;

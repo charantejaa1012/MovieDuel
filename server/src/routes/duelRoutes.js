@@ -4,13 +4,16 @@
  */
 
 import { Router } from 'express';
-import { compare, getHistory } from '../controllers/duelController.js';
+import { compare, getHistory, getFeaturedDuels } from '../controllers/duelController.js';
 import { auth, optionalAuth } from '../middleware/auth.js';
 import { duelLimiter } from '../middleware/rateLimiter.js';
 import { validate } from '../middleware/validate.js';
 import { compareSchema } from '../validators/duelValidators.js';
 
 const router = Router();
+
+// Dynamic featured matchups
+router.get('/featured', getFeaturedDuels);
 
 // Duel comparison endpoint with rate limiting, payload validation, and optional auth
 router.post('/compare', duelLimiter, validate(compareSchema), optionalAuth, compare);
