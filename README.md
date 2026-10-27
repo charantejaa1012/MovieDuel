@@ -5,6 +5,14 @@
 
 ---
 
+## 🎥 Project Demo Video
+
+[![Watch Movie Duel Demo Video](https://img.shields.io/badge/Demo_Video-Watch_on_Google_Drive-E50914?style=for-the-badge&logo=google-drive&logoColor=white)](https://drive.google.com/file/d/1Xs3agJyvBoqFhX7JXKY3S6u4IRvJMHic/view?usp=sharing)
+
+> 🎬 **Watch the full walkthrough & feature demo:** [**Click here to view the Demo Video**](https://drive.google.com/file/d/1Xs3agJyvBoqFhX7JXKY3S6u4IRvJMHic/view?usp=sharing)
+
+---
+
 ## 1. Project Overview & Problem Statement
 
 Movie enthusiasts and casual viewers frequently experience decision paralysis when trying to pick what to watch. Existing movie databases offer overwhelming lists and generic popularity charts, but lack transparent decision tools to compare two titles side-by-side based on user preferences (genres, runtime tolerance, rating thresholds, and popularity).
